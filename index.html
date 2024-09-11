@@ -11,15 +11,43 @@
     }
     body {
         margin: 0;
+        font-family:Arial, Helvetica, sans-serif
+    }
+    #playercanvas {
+        /* lava :) */
+        border-bottom: 5px solid orange !important;
+    }
+    .ohno {
+        display: none;
+    }
+    .ohyeah {
+        display: block;
+    }
+    button {
+        padding: 20px;
+        font-size: 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        background-color: skyblue;
+        border: 2px solid blue; 
+        position: absolute;
+        left: 50vw;
+        transform: translateX(-50%);
     }
 </style>
 <canvas id="maincanvas" width="700" height="500" style="border:1px solid black"></canvas>
 <!-- we need another canvas because we don't want to render the background again every frame-->
 <canvas id="playercanvas" width="700" height="500" style="border:1px solid black"></canvas>
+<div style="text-align: center;">
+ <h1 id="he" class="ohno">Sorry, but you lost.</h1>
 
+ <button id="ha" class = "ohno" onclick="location.reload()">Retry?</button>
+ </div>
+ 
 <script>
     // 25 px blocks, 28 blocks on x axis, 20 blocks on y axis
     // 0 is empty space, 1 is a block, # is the end, and @ is the player.
+    // boring variables, they mean what they sound like they mean
 var goal = [];
 var player = [];
 var right = 675;
@@ -35,6 +63,10 @@ var obsx =[];
 var obsy = [];
 var maxFallSpeed = 10;
 var isjumping = false;
+var pushvar = 0;
+var index = true;
+var translatePos = [];
+// level editor: 0 = empty, 1 = platform/obstacle, # = goal (there can only be one), and @ = player (there can only be one).
 var lvl1 = [ "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
@@ -56,10 +88,11 @@ var lvl1 = [ "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "#", "0", "0",
              "1", "1", "1", "1", "1", "1", "1", "0", "0", "0", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1",
 ]
+// init both canvases
 const canvas = document.getElementById("maincanvas");
 const ctx = canvas.getContext("2d");
 const cvas = document.getElementById("playercanvas");
-const pctx = canvas.getContext("2d");
+const pctx = cvas.getContext("2d");
 setInterval(updatePlayer, 15);
 const keysPressed = {};
 // function to check if a key is pressed
@@ -74,10 +107,42 @@ function isKeyPressed(code) {
   return !!keysPressed[code];
 }
 var e = 0;
-var ye = 0
+var ye = 0;
+var lastcoord; 
+var g; 
+var reloaded = false;
+    // for reliable processing of the obstacle coords, we need to zip them into tuples:
+function gameOver() {
+    if (reloaded == false) {
+        document.getElementById("playercanvas").setAttribute("class", "ohno");
+        document.getElementById("maincanvas").setAttribute("class", "ohno");
+        document.getElementById("he").setAttribute("class", "ohyeah");
+        document.getElementById("ha").setAttribute("class", "ohyeah");
+    } 
+}
+// the giant function for calculating physics and updating the player and solving philosophy:
 function updatePlayer() {
+    translatePos = [(player[0] + 25), (player[1] + 24)];
+    // ok, I tried other stuff, but we're brute forcing it. Calculate the color of the background px at bottom right corner of player, and use that to check for collisions. 
+    let imageData = ctx.getImageData((translatePos[0] - 25), (translatePos[1] - 8), 1, 25); // Get 1x25 pixel data at (x, y)
+    let pixelData = imageData.data; // Returns an array [r, g, b, a]
+    // avg the color data
+    let rTotal = 0, gTotal = 0, bTotal = 0, aTotal = 0;
+    let pixelCount = pixelData.length / 4; // Total number of pixels
+    for (let i = 0; i < pixelData.length; i += 4) {
+    rTotal += pixelData[i];     // Red
+    gTotal += pixelData[i + 1]; // Green
+    bTotal += pixelData[i + 2]; // Blue
+    aTotal += pixelData[i + 3]; // Alpha
+    }
 
-    console.log(canDoubleJump);
+    let rAvg = Math.round(rTotal / pixelCount);
+    let gAvg = Math.round(gTotal / pixelCount);
+    let bAvg = Math.round(bTotal / pixelCount);
+    let aAvg = Math.round(aTotal / pixelCount); // Alpha can stay as an integer (255 max)
+    let pixel = [rAvg, gAvg, bAvg, aAvg];
+    // console.log(playerVelY);
+    // console.log(translatePos[0], translatePos[1], isGrounded);
 
     pctx.clearRect(player[0], player[1], 25, 25);
     if (isKeyPressed("ArrowRight") || isKeyPressed("d")) {
@@ -86,8 +151,10 @@ function updatePlayer() {
     if (isKeyPressed("ArrowLeft") || isKeyPressed("a")) {
         player[0] -= 2;
     }
-    if (isKeyPressed("ArrowUp") || isKeyPressed("w")) {
+        if (isKeyPressed("ArrowUp") || isKeyPressed("w")) {
+
         if (isGrounded) {
+
                 playerVelY = jumpHeight;
                 isGrounded = false;
                 canDoubleJump = true; // Allow double jump after the first jump
@@ -100,11 +167,11 @@ function updatePlayer() {
             }
     }
     // Apply gravity and movement
-    playerVelY += gravity;
-    if (playerVelY > maxFallSpeed) {
-        playerVelY = maxFallSpeed;
-    }
 
+
+
+
+    // don't use, this is bad code: 
     // if (obsy.some(element => (player[1] + 25) < element)) {
     //    if ( obsx.some(element => (player[0] + 25) < element)) {
     //        var superduper = obsy.find(element => (player[1] + 25) < element);
@@ -112,17 +179,6 @@ function updatePlayer() {
     //        isGrounded = true;
     //    }
     //}
-    player[1] += playerVelY;
-
-        // Boundaries and ground check
-        if (player[1] >= bottom) {
-            player[1] = bottom;
-            playerVelY = 0;
-            isGrounded = true;
-            canDoubleJump = false; // Reset double jump when grounded
-        } else {
-            isGrounded = false;
-        }
     if (isKeyPressed("ArrowRight") || isKeyPressed("s")) {
         player[1] += 2;
     }
@@ -137,9 +193,35 @@ function updatePlayer() {
     }
     if (player[1] >= bottom) {
         player[1] = bottom;
+        gameOver();
     } 
+
+    playerVelY += gravity;
     
-    player[1] += gravity;
+    if (playerVelY > maxFallSpeed) {
+    playerVelY = maxFallSpeed;
+     }   
+    player[1] += playerVelY;
+     console.log(pixel);
+    // console.log(translatePos[0], (translatePos[1] + 1), isGrounded);
+        // Boundaries and ground check
+        if (player[1] >= bottom) {
+            player[1] = bottom;
+            playerVelY = 0;
+            isGrounded = true;
+            canDoubleJump = false; // Reset double jump when grounded
+            // check for obstacle collisions: 
+        } else if (pixel[3] >= 1) {
+            
+            playerVelY = -1;
+            isGrounded = true;
+            console.log("Hit! " + console.log(translatePos[1], player[1], isGrounded));
+        } else {
+            isGrounded = false;
+            
+        }
+
+    
     pctx.fillStyle = "red";
     pctx.fillRect(player[0], player[1], 25, 25);
 
@@ -160,8 +242,10 @@ function renderLevel() {
                 ctx.fillStyle = "black";
                 ctx.fillRect(x, y, 25, 25);
                 i++;
-                obsx.push(x);
-                obsy.push(y);
+                for (let h = 0; h <= 25; h++) {
+                    obsx.push(x+h);
+                    obsy.push(y+h);
+                }
                 break;
             case "#":
                 ctx.fillStyle = "yellow";
@@ -185,6 +269,8 @@ function renderLevel() {
 renderLevel();
 console.log(obsx)
 console.log(obsy)
+const obstuples = obsx.map((x, index) => [x, obsy[index]]);
+    console.log(obstuples);
 // ctx.fillStyle = "pink";
 // ctx.fillRect(10,10, 150,100);
 </script> 
