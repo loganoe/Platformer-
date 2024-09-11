@@ -22,8 +22,19 @@
     // 0 is empty space, 1 is a block, # is the end, and @ is the player.
 var goal = [];
 var player = [];
-
-
+var right = 675;
+var bottom = 475;
+var gravity = 1;
+var jumpboost = 1.2;
+var playerVelY = 0;
+var isGrounded = false;
+var jumpHeight = -15; // negative because jumping up
+var jumpCount = 0;
+var canDoubleJump = false;
+var obsx =[];
+var obsy = [];
+var maxFallSpeed = 10;
+var isjumping = false;
 var lvl1 = [ "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
@@ -36,20 +47,20 @@ var lvl1 = [ "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
-             "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
+             "0", "0", "0", "@", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "1", "1", "1", "1", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
-             "0", "0", "0", "@", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "#", "0", "0",
+             "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "#", "0", "0",
              "1", "1", "1", "1", "1", "1", "1", "0", "0", "0", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1",
 ]
 const canvas = document.getElementById("maincanvas");
 const ctx = canvas.getContext("2d");
 const cvas = document.getElementById("playercanvas");
 const pctx = canvas.getContext("2d");
-setInterval(updatePlayer, 10);
+setInterval(updatePlayer, 15);
 const keysPressed = {};
 // function to check if a key is pressed
 document.addEventListener('keydown', (event) => {
@@ -62,8 +73,12 @@ document.addEventListener('keyup', (event) => {
 function isKeyPressed(code) {
   return !!keysPressed[code];
 }
-
+var e = 0;
+var ye = 0
 function updatePlayer() {
+
+    console.log(canDoubleJump);
+
     pctx.clearRect(player[0], player[1], 25, 25);
     if (isKeyPressed("ArrowRight") || isKeyPressed("d")) {
         player[0] += 2;
@@ -72,14 +87,62 @@ function updatePlayer() {
         player[0] -= 2;
     }
     if (isKeyPressed("ArrowUp") || isKeyPressed("w")) {
-        player[1] -= 2;
+        if (isGrounded) {
+                playerVelY = jumpHeight;
+                isGrounded = false;
+                canDoubleJump = true; // Allow double jump after the first jump
+            } else if (canDoubleJump) {
+                ye++;
+                 if (ye > 10) {playerVelY = jumpHeight * jumpboost;
+                canDoubleJump = false; // Disable double jump after use
+                ye = 0;
+                 }
+            }
     }
+    // Apply gravity and movement
+    playerVelY += gravity;
+    if (playerVelY > maxFallSpeed) {
+        playerVelY = maxFallSpeed;
+    }
+
+    // if (obsy.some(element => (player[1] + 25) < element)) {
+    //    if ( obsx.some(element => (player[0] + 25) < element)) {
+    //        var superduper = obsy.find(element => (player[1] + 25) < element);
+    //        player[1] = superduper;
+    //        isGrounded = true;
+    //    }
+    //}
+    player[1] += playerVelY;
+
+        // Boundaries and ground check
+        if (player[1] >= bottom) {
+            player[1] = bottom;
+            playerVelY = 0;
+            isGrounded = true;
+            canDoubleJump = false; // Reset double jump when grounded
+        } else {
+            isGrounded = false;
+        }
     if (isKeyPressed("ArrowRight") || isKeyPressed("s")) {
         player[1] += 2;
     }
+    if (player[0] <= 0) {
+        player[0] = 0;
+    }
+    if (player[1] <= 0) {
+        player[1] = 0;
+    } 
+    if (player[0] >= right) {
+        player[0] = right;
+    }
+    if (player[1] >= bottom) {
+        player[1] = bottom;
+    } 
+    
+    player[1] += gravity;
     pctx.fillStyle = "red";
     pctx.fillRect(player[0], player[1], 25, 25);
-    console.log(player[0], player[1]);
+
 }
 i = 0;
 total = 560; 
@@ -97,6 +160,8 @@ function renderLevel() {
                 ctx.fillStyle = "black";
                 ctx.fillRect(x, y, 25, 25);
                 i++;
+                obsx.push(x);
+                obsy.push(y);
                 break;
             case "#":
                 ctx.fillStyle = "yellow";
@@ -118,7 +183,8 @@ function renderLevel() {
 }
 
 renderLevel();
-
+console.log(obsx)
+console.log(obsy)
 // ctx.fillStyle = "pink";
 // ctx.fillRect(10,10, 150,100);
 </script> 
