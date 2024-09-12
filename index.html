@@ -66,7 +66,7 @@ var isjumping = false;
 var pushvar = 0;
 var index = true;
 var translatePos = [];
-// level editor: 0 = empty, 1 = platform/obstacle, # = goal (there can only be one), and @ = player (there can only be one).
+// level editor: 0 = empty, 1 = platform/obstacle that can be phased through, 2 = platform that cannot be phased through # = goal (there can only be one), and @ = player (there can only be one).
 var lvl1 = [ "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
@@ -81,19 +81,20 @@ var lvl1 = [ "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "@", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
-             "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "1", "1", "1", "1", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
+             "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "2", "1", "1", "1", "2", "2", "2", "2", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
              "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "#", "0", "0",
-             "1", "1", "1", "1", "1", "1", "1", "0", "0", "0", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1",
+             "2", "2", "2", "2", "2", "2", "2", "0", "0", "0", "2", "2", "2", "2", "2", "2", "2", "2", "2", "2", "2", "2", "2", "2", "2", "2", "2", "2",
 ]
 // init both canvases
 const canvas = document.getElementById("maincanvas");
 const ctx = canvas.getContext("2d");
 const cvas = document.getElementById("playercanvas");
 const pctx = cvas.getContext("2d");
-setInterval(updatePlayer, 15);
+setInterval(updatePlayer, 10);
+
 const keysPressed = {};
 // function to check if a key is pressed
 document.addEventListener('keydown', (event) => {
@@ -124,7 +125,8 @@ function gameOver() {
 function updatePlayer() {
     translatePos = [(player[0] + 25), (player[1] + 24)];
     // ok, I tried other stuff, but we're brute forcing it. Calculate the color of the background px at bottom right corner of player, and use that to check for collisions. 
-    let imageData = ctx.getImageData((translatePos[0] - 25), (translatePos[1] - 8), 1, 25); // Get 1x25 pixel data at (x, y)
+    let imageData = ctx.getImageData((player[0]), (player[1] + 18), 25, 25); // Get 1x25 pixel data at (x, y)
+    // ctx.fillRect((player[0]), (player[1] + 1), 25, 25);
     let pixelData = imageData.data; // Returns an array [r, g, b, a]
     // avg the color data
     let rTotal = 0, gTotal = 0, bTotal = 0, aTotal = 0;
@@ -141,6 +143,7 @@ function updatePlayer() {
     let bAvg = Math.round(bTotal / pixelCount);
     let aAvg = Math.round(aTotal / pixelCount); // Alpha can stay as an integer (255 max)
     let pixel = [rAvg, gAvg, bAvg, aAvg];
+    
     // console.log(playerVelY);
     // console.log(translatePos[0], translatePos[1], isGrounded);
 
@@ -168,7 +171,7 @@ function updatePlayer() {
     }
     // Apply gravity and movement
 
-
+    
 
 
     // don't use, this is bad code: 
@@ -202,7 +205,8 @@ function updatePlayer() {
     playerVelY = maxFallSpeed;
      }   
     player[1] += playerVelY;
-     console.log(pixel);
+     var hits;
+     console.log(pixel[3]);
     // console.log(translatePos[0], (translatePos[1] + 1), isGrounded);
         // Boundaries and ground check
         if (player[1] >= bottom) {
@@ -211,11 +215,33 @@ function updatePlayer() {
             isGrounded = true;
             canDoubleJump = false; // Reset double jump when grounded
             // check for obstacle collisions: 
+            let its = 0; 
         } else if (pixel[3] >= 1) {
-            
+
+             if (pixel[3] >= 30) {
+                hits++;
+                if (hits >= 3) {
+                player[1] -= Math.floor(pixel[3] / 5) ;
+                }
+             } else {
+                hits = 0;
+             }
+            if (playerVelY < -2 && its >= 2) {
+                
+                console.log("UPWARD HIT!");
+                isGrounded = false;
+                playerVelY = 10;
+                player[1] += 30;
+              } else if (playerVelY < -2) {
+                its++;
+                console.log(its);
+             } else {
+                its = 0;
             playerVelY = -1;
             isGrounded = true;
-            console.log("Hit! " + console.log(translatePos[1], player[1], isGrounded));
+             }
+
+            // console.log("Hit! " + translatePos[1], player[1], isGrounded, playerVelY);
         } else {
             isGrounded = false;
             
@@ -239,13 +265,18 @@ function renderLevel() {
                 i++;
                 break;
             case "1": 
-                ctx.fillStyle = "black";
+                ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
                 ctx.fillRect(x, y, 25, 25);
                 i++;
                 for (let h = 0; h <= 25; h++) {
                     obsx.push(x+h);
                     obsy.push(y+h);
                 }
+                break;
+            case "2":
+                ctx.fillStyle = "rgba(0, 0, 0, 1)";
+                ctx.fillRect(x, y, 25, 25);
+                i++;
                 break;
             case "#":
                 ctx.fillStyle = "yellow";
